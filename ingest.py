@@ -55,76 +55,67 @@ def mk_video_src(args, videocaps):
     else:
         d['monitor'] = ""
 
+    if not args.lightweight:
+        d['convert'] = "videoconvert ! videorate ! videoscale ! "
+    else:
+        d['convert'] = ''
+
     if args.video_source == 'dv':
         video_src = """
-            dv1394src name=videosrc {attribs} !
-        dvdemux name=demux !
-        queue max-size-time=4000000000 !
-        dvdec !
+        dv1394src name=videosrc {attribs} !
+            dvdemux name=demux !
+            queue max-size-time=4000000000 !
+            dvdec !
                 {monitor}
-        deinterlace mode=1 !
-        videoconvert !
-        videorate !
-        videoscale !
-            """
+                deinterlace mode=1 !
+                {convert}
+        """
 
     elif args.video_source == 'hdv':
         video_src = """
-            hdv1394src {attribs} name=videosrc !
-        tsdemux !
-        queue max-size-time=4000000000 !
-        decodebin !
+        hdv1394src {attribs} name=videosrc !
+            tsdemux !
+            queue max-size-time=4000000000 !
+            decodebin !
                 {monitor}
-        deinterlace mode=1 !
-        videorate !
-        videoscale !
-        videoconvert !
-            """
+                deinterlace mode=1 !
+                {convert}
+        """
 
     elif args.video_source == 'hdmi2usb':
         # https://hdmi2usb.tv
         # Note: this code works with 720p
         video_src = """
-            v4l2src {attribs} name=videosrc !
-                queue max-size-time=4000000000 !
-        image/jpeg,width=1280,height=720 !
-                jpegdec !
-                {monitor}
-                videoconvert !
-                videoscale !
-                videorate !
-            """
+        v4l2src {attribs} name=videosrc !
+            queue max-size-time=4000000000 !
+            image/jpeg,width=1280,height=720 ! {monitor} {convert}
+        """
 
     elif args.video_source == 'ximage':
         video_src = """
-            ximagesrc {attribs} name=videosrc
-                   use-damage=false !
+        ximagesrc {attribs} name=videosrc
+            use-damage=false !
                 {monitor}
-        videoconvert !
-                videorate !
-                videoscale !
-            """
+                {convert}
+        """
         # startx=0 starty=0 endx=1919 endy=1079 !
 
     elif args.video_source == 'blackmagic':
         video_src = """
-            decklinkvideosrc {attribs} !
-                {monitor}
-        videoconvert !
-                videorate !
-                videoscale !
+        decklinkvideosrc {attribs} !
+            {monitor}
+            {convert}
             """
         # yadif !
 
     elif args.video_source == 'png':
         video_src = """
-            multifilesrc {attribs}
-                caps="image/png" !
+        multifilesrc {attribs}
+            caps="image/png" !
             pngdec !
-            videoscale !
                 {monitor}
-            videoconvert !
-            """
+                {convert}
+        """
 
     elif args.video_source == 'test':
 
@@ -133,16 +124,27 @@ def mk_video_src(args, videocaps):
         d['videocaps'] = videocaps
 
         video_src = """
-videotestsrc name=videosrc {attribs} !
-    clockoverlay
-        text="Source:{hostname}\nCaps:{videocaps}\nAttribs:{attribs}\n"
-        halignment=left line-alignment=left !
-    {monitor}
-            """
+        videotestsrc name=videosrc {attribs} !
+            clockoverlay
+                text="Source:{hostname}\nCaps:{videocaps}\nAttribs:{attribs}\n"
+                halignment=left line-alignment=left !
+            {monitor}
+        """
+   
+    elif args.video_source == 'lightweight':
+        video_src = """
+        tcpserversrc port=30000 host=0.0.0.0 ! 
+            queue !
+            matroskademux name=d !
+            jpegdec ! {monitor} {convert}
+        """
 
     video_src = video_src.format(**d)
 
-    video_src += videocaps + "!\n"
+    if not args.lightweight:
+        video_src += videocaps + "! mux."
+    else:
+        video_src += " mux."
 
     return video_src
 
@@ -184,6 +186,13 @@ def mk_audio_src(args, audiocaps):
         audio_src = """
             audiotestsrc {attribs} name=audiosrc freq=330 !
             """
+
+    elif args.audio_source == 'lightweight':
+        audio_src = """
+            d.  ! queue ! 
+        """
+
+
     audio_src = audio_src.format(**d)
 
     audio_src += audiocaps + "!\n"
@@ -193,7 +202,7 @@ def mk_audio_src(args, audiocaps):
 
 def mk_client(core_ip, port):
 
-    client = "tcpclientsink host={host} port={port}".format(
+    client = "queue ! tcpclientsink host={host} port={port}".format(
             host=core_ip, port=port)
 
     return client
@@ -201,16 +210,21 @@ def mk_client(core_ip, port):
 
 def mk_pipeline(args, server_caps, core_ip):
 
-    video_src = mk_video_src(args, server_caps['videocaps'])
-    audio_src = mk_audio_src(args, server_caps['audiocaps'])
+    if args.video_source != 'none':
+        video_src = mk_video_src(args, server_caps['videocaps'])
+    else:
+        video_src = ""
+  
+    if args.audio_source != 'none':
+        audio_src = mk_audio_src(args, server_caps['audiocaps'])
+    else:
+        audio_src = ""
 
     client = mk_client(core_ip, args.port)
 
     pipeline = """
     {video_src}
-     mux.
     {audio_src}
-     mux.
             matroskamux name=mux !
     {client}
     """.format(video_src=video_src, audio_src=audio_src, client=client)
@@ -297,6 +311,14 @@ def run_pipeline(pipeline, clock, audio_delay=0, video_delay=0):
         print('Error-Details: #%u: %s' % (error.code, debug))
         sys.exit(2)
 
+    def on_info(bus, message):
+        (error, debug) = message.parse_info()
+        print('Info-Details:  %s' % (debug))
+
+    def on_status_changed(bus, message):
+        (oldstate, newstate, pending) = message.parse_state_changed ()
+        #print('State-Details: %s - %s - %s' % (oldstate.name, newstate.name, pending))
+
     print('starting pipeline...')
     senderPipeline = Gst.parse_launch(pipeline)
     senderPipeline.use_clock(clock)
@@ -320,6 +342,8 @@ def run_pipeline(pipeline, clock, audio_delay=0, video_delay=0):
     senderPipeline.bus.add_signal_watch()
     senderPipeline.bus.connect("message::eos", on_eos)
     senderPipeline.bus.connect("message::error", on_error)
+    senderPipeline.bus.connect('message::info', on_info)
+    senderPipeline.bus.connect('message::state-changed', on_status_changed)
 
     print("playing...")
     senderPipeline.set_state(Gst.State.PLAYING)
@@ -355,7 +379,7 @@ def get_args():
         '--video-source', action='store',
         choices=[
             'dv', 'hdv', 'hdmi2usb', 'blackmagic',
-            'ximage', 'png', 'test'],
+            'ximage', 'png', 'test', 'lightweight', 'none'],
         default='test',
         help="Where to get video from")
 
@@ -371,7 +395,7 @@ def get_args():
 
     parser.add_argument(
         '--audio-source', action='store',
-        choices=['dv', 'alsa', 'pulse', 'blackmagic', 'test'],
+        choices=['dv', 'alsa', 'pulse', 'blackmagic', 'test', 'lightweight', 'none'],
         default='test',
         help="Where to get audio from")
 
@@ -403,6 +427,9 @@ def get_args():
     parser.add_argument(
         '--debug', action='store_true',
         help="debugging things, like dump a  gst-launch-1.0 command")
+
+    parser.add_argument('--lightweight', action='store_true',
+                        help="do not encode video or audio locally.  Ship to remote ingest.py for processing into core.")
 
     args = parser.parse_args()
 
