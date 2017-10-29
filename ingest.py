@@ -42,7 +42,7 @@ from lib.connection import Connection
 def mk_video_src(args, videocaps):
     # make video source part of pipeline
 
-    d = {'attribs': args.video_attribs}
+    d = {'attribs': args.video_attribs,'video-custom-pipe': args.video_custom_pipe}
 
     if args.monitor:
         if args.debug:
@@ -137,7 +137,7 @@ def mk_video_src(args, videocaps):
         tcpserversrc port=30000 host=0.0.0.0 ! 
             queue max-size-time=4000000000 !
             matroskademux name=d !
-            jpegdec ! {monitor} {convert}
+            jpegdec ! {video-custom-pipe} {monitor} {convert}
         """
 
     video_src = video_src.format(**d)
@@ -386,6 +386,10 @@ def get_args():
     parser.add_argument(
         '--video-attribs', action='store', default='',
         help="misc video attributes for gst")
+
+    parser.add_argument(
+        '--video-custom-pipe', action='store', default='',
+        help="custom video pipeline. must end in !")
 
     parser.add_argument(
         '--video-delay', action='store',
