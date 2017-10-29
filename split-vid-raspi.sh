@@ -48,6 +48,6 @@ gst-launch-1.0 v4l2src ! \
     image/jpeg,width=1920,height=1080,framerate=30/1 ! \
     matroskamux ! \
     queue max-size-time=4000000000 ! \
-    tcpserversink host=0.0.0.0 port=30000
+    tcpclientsink host=127.0.0.1 port=30000
 
 
