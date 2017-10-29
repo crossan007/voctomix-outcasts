@@ -88,7 +88,7 @@ def mk_video_src(args, videocaps):
         video_src = """
         v4l2src {attribs} name=videosrc !
             queue max-size-time=4000000000 !
-            image/jpeg,width=1280,height=720 ! {monitor} {convert}
+            image/jpeg ! {monitor} {convert}
         """
 
     elif args.video_source == 'ximage':
@@ -128,13 +128,13 @@ def mk_video_src(args, videocaps):
             clockoverlay
                 text="Source:{hostname}\nCaps:{videocaps}\nAttribs:{attribs}\n"
                 halignment=left line-alignment=left !
-            {monitor}
+            {monitor}  jpegenc !
         """
    
     elif args.video_source == 'lightweight':
         video_src = """
         tcpserversrc port=30000 host=0.0.0.0 ! 
-            queue !
+            queue max-size-time=4000000000 !
             matroskademux name=d !
             jpegdec ! {monitor} {convert}
         """
@@ -202,7 +202,7 @@ def mk_audio_src(args, audiocaps):
 
 def mk_client(core_ip, port):
 
-    client = "queue ! tcpclientsink host={host} port={port}".format(
+    client = "queue max-size-time=4000000000 ! tcpclientsink host={host} port={port}".format(
             host=core_ip, port=port)
 
     return client
@@ -225,8 +225,8 @@ def mk_pipeline(args, server_caps, core_ip):
     pipeline = """
     {video_src}
     {audio_src}
-            matroskamux name=mux !
-    {client}
+    matroskamux name=mux !
+        {client}
     """.format(video_src=video_src, audio_src=audio_src, client=client)
 
     # remove blank lines to make it more human readable
@@ -428,8 +428,9 @@ def get_args():
         '--debug', action='store_true',
         help="debugging things, like dump a  gst-launch-1.0 command")
 
-    parser.add_argument('--lightweight', action='store_true',
-                        help="do not encode video or audio locally.  Ship to remote ingest.py for processing into core.")
+    parser.add_argument(
+        '--lightweight', action='store_true',
+        help="do not decode video or audio locally.  Ship to remote ingest.py for processing into core.")
 
     args = parser.parse_args()
 

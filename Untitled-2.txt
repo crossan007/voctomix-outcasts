@@ -1,0 +1,38 @@
+omx:  omxh264enc: OpenMAX H.264 Video Encoder
+omx:  omxvc1dec: OpenMAX WMV Video Decoder
+omx:  omxmjpegdec: OpenMAX MJPEG Video Decoder
+omx:  omxvp8dec: OpenMAX VP8 Video Decoder
+omx:  omxtheoradec: OpenMAX Theora Video Decoder
+omx:  omxh264dec: OpenMAX H.264 Video Decoder
+omx:  omxh263dec: OpenMAX H.263 Video Decoder
+omx:  omxmpeg4videodec: OpenMAX MPEG4 Video Decoder
+omx:  omxmpeg2videodec: OpenMAX MPEG2 Video Decoder
+libav:  avenc_h264_omx: libav OpenMAX IL H.264 video encoder encoder
+
+
+
+gst-launch-1.0 videotestsrc pattern=snow ! videoconvert ! omxh264enc control-rate=1 target-bitrate=1500000 ! "video/x-h264,profile=high,width=720,height=568" ! matroskamux ! queue ! filesink location=./test.mkv
+
+
+gst-launch-1.0 -e videotestsrc ! 'video/x-raw,width=(int)800,height=(int)600' ! videoconvert  ! videorate ! queue ! omxh264enc ! h264parse ! video/x-h264,profile=superfast  ! matroskamux ! queue ! filesink location=./cam2.mkv 
+
+
+
+
+
+gst-launch-1.0 -vv v4l2src ! videoscale !  videorate  ! videoconvert ! \
+  video/x-raw,width=720,height=480,framerate=30/1  ! omxh264enc ! \
+video/x-h264,width=720,height=480,framerate=30/1,profile=high,target-bitrate=8000000,control-rate=variable,quant-i-frames=250 ! tcpclientsink host=172.30.9.158 port=30000
+
+
+gst-launch-1.0 videotestsrc pattern=snow ! jpegenc ! tcpclientsink host=172.30.9.158 port=30000
+
+
+
+
+
+gst-launch-1.0 tcpserversrc host=0.0.0.0 port=30000 ! jpegdec ! autovideosink
+
+
+
+gst-launch-1.0 v4l2src ! image/jpeg ! jpegdec ! omxh264enc target-bitrate=1000000 control-rate=variable ! "video/x-h264,profile=high" !  h264parse ! matroskamux ! filesink location=./test.mkv

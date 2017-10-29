@@ -1,0 +1,5 @@
+gst-launch-1.0 -v tcpserversrc port=30000 host=0.0.0.0 !  decodebin ! autovideosink
+
+
+
+gst-launch-1.0 v4l2src name=videosrc ! queue max-size-time=4000000000 ! image/jpeg,width=1280,height=720 ! jpegdec ! omxh264enc target-bitrate=1000000 control-rate=variable ! "video/x-h264,profile=high" !  h264parse ! matroskamux ! queue leaky=2 ! tcpclientsink host=172.30.9.158 port=30000 
