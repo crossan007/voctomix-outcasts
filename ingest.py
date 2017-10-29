@@ -440,7 +440,7 @@ def get_args():
 def test_core(core_ip,port,timeout=1):
     try:
         socket.setdefaulttimeout(timeout)
-        socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((core_ip, 9999))
+        socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((core_ip, port))
         return True
     except Exception as ex:
         time.sleep(timeout)
