@@ -468,8 +468,10 @@ def main():
     pipeline = mk_pipeline(args, server_caps, core_ip)
 
     if not args.localclock:
+        print("Using Core's clock")
         clock = get_clock(core_ip)
     else:
+        print("Using local clock")
         clock = pipeline.get_clock()
 
     run_pipeline(pipeline, clock, args.audio_delay, args.video_delay)
