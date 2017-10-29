@@ -437,7 +437,7 @@ def get_args():
 
     return args
 
-def test_core(core_ip,timeout=1):
+def test_core(core_ip,port,timeout=1):
     try:
         socket.setdefaulttimeout(timeout)
         socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((core_ip, 9999))
@@ -452,8 +452,8 @@ def main():
 
     args = get_args()
     core_ip = socket.gethostbyname(args.host)
-    while not test_core(core_ip):
-        print("Waiting for Core " + core_ip)
+    while not test_core(core_ip,args.port):
+        print("Waiting for Core " + core_ip + ": "+args.port)
 
 
     server_caps, args = get_server_conf(core_ip, args.source_id, args)
