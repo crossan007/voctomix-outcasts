@@ -251,7 +251,7 @@ def mk_pipeline(args, server_caps, core_ip):
         print(gst_cmd)
         print("-"*78)
 
-    return pipeline
+    return Gst.parse_launch(pipeline)
 
 def get_server_conf(core_ip, source_id, args):
 
@@ -300,7 +300,7 @@ def get_clock(core_ip, core_clock_port=9998):
     return clock
 
 
-def run_pipeline(pipeline, clock, audio_delay=0, video_delay=0):
+def run_pipeline(senderPipeline, clock, audio_delay=0, video_delay=0):
 
     def on_eos(bus, message):
         print('Received EOS-Signal')
@@ -321,7 +321,6 @@ def run_pipeline(pipeline, clock, audio_delay=0, video_delay=0):
         #print('State-Details: %s - %s - %s' % (oldstate.name, newstate.name, pending))
 
     print('starting pipeline...')
-    senderPipeline = Gst.parse_launch(pipeline)
     senderPipeline.use_clock(clock)
 
     # Delay video/audio if required
@@ -432,6 +431,10 @@ def get_args():
     parser.add_argument(
         '--lightweight', action='store_true',
         help="do not decode video or audio locally.  Ship to remote ingest.py for processing into core.")
+    
+    parser.add_argument(
+        '--localclock', action='store_true',
+        help="do not use remote's clock.  Bad idea, but could be useful for testing.")
 
     args = parser.parse_args()
 
@@ -440,7 +443,7 @@ def get_args():
 def test_core(core_ip,timeout=1):
     try:
         socket.setdefaulttimeout(timeout)
-        socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((core_ip, 9998))
+        socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((core_ip, 9999))
         return True
     except Exception as ex:
         time.sleep(timeout)
@@ -453,14 +456,17 @@ def main():
     args = get_args()
     core_ip = socket.gethostbyname(args.host)
     while not test_core(core_ip):
-        print("Waiting for Core " + core_ip + ": "+args.port)
+        print("Waiting for Core " + core_ip + ": 9999")
 
 
     server_caps, args = get_server_conf(core_ip, args.source_id, args)
 
     pipeline = mk_pipeline(args, server_caps, core_ip)
 
-    clock = get_clock(core_ip)
+    if not args.localclock:
+        clock = get_clock(core_ip)
+    else:
+        clock = pipeline.get_clock()
 
     run_pipeline(pipeline, clock, args.audio_delay, args.video_delay)
 
