@@ -96,6 +96,7 @@ def mk_video_src(args, videocaps):
         video_src = """
         ximagesrc {attribs} name=videosrc
             use-damage=false !
+            jpegenc !
                 {monitor}
                 {convert}
         """
@@ -438,7 +439,7 @@ def get_args():
     
     parser.add_argument(
         '--localclock', action='store_true',
-        help="do not use remote's clock.  Bad idea, but could be useful for testing.")
+        help="do not use voctocore's clock.  Generally a bad idea, but could be useful for testing.")
 
     args = parser.parse_args()
 
