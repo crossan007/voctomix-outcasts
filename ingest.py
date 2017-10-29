@@ -212,24 +212,29 @@ def mk_client(core_ip, port):
 
 def mk_pipeline(args, server_caps, core_ip):
 
-    if args.video_source != 'none':
-        video_src = mk_video_src(args, server_caps['videocaps'])
-    else:
-        video_src = ""
-  
-    if args.audio_source != 'none':
-        audio_src = mk_audio_src(args, server_caps['audiocaps'])
-    else:
-        audio_src = ""
+    if not args.custom_pipeline:
 
-    client = mk_client(core_ip, args.port)
+        if args.video_source != 'none':
+            video_src = mk_video_src(args, server_caps['videocaps'])
+        else:
+            video_src = ""
+    
+        if args.audio_source != 'none':
+            audio_src = mk_audio_src(args, server_caps['audiocaps'])
+        else:
+            audio_src = ""
 
-    pipeline = """
-    {video_src}
-    {audio_src}
-    matroskamux name=mux !
-        {client}
-    """.format(video_src=video_src, audio_src=audio_src, client=client)
+        client = mk_client(core_ip, args.port)
+
+        pipeline = """
+        {video_src}
+        {audio_src}
+        matroskamux name=mux !
+            {client}
+        """.format(video_src=video_src, audio_src=audio_src, client=client)
+
+    else:
+        pipeline = args.custom_pipeline
 
     # remove blank lines to make it more human readable
     while "\n\n" in pipeline:
@@ -440,6 +445,11 @@ def get_args():
     parser.add_argument(
         '--localclock', action='store_true',
         help="do not use voctocore's clock.  Generally a bad idea, but could be useful for testing.")
+
+
+    parser.add_argument(
+        '--custom-pipeline', action='store',
+        help="completely define your own pipeline.")
 
     args = parser.parse_args()
 
