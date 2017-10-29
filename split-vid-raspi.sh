@@ -35,9 +35,9 @@ gst-launch-1.0 v4l2src  ! \
 
 
 
-gst-launch-1.0 v4l2src  ! \
+gst-launch-1.0 v4l2src ! \
     video/x-h264 ! \
-    h264parse !\
+    h264parse ! \
     queue max-size-time=4000000000 ! \
     tcpserversink host=0.0.0.0 port=30000
 

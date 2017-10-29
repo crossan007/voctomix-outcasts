@@ -29,6 +29,7 @@ import argparse
 from pprint import pprint
 import socket
 import sys
+import time
 
 import gi
 gi.require_version('Gst', '1.0')
@@ -128,8 +129,8 @@ def mk_video_src(args, videocaps):
             clockoverlay
                 text="Source:{hostname}\nCaps:{videocaps}\nAttribs:{attribs}\n"
                 halignment=left line-alignment=left !
-            {monitor}  jpegenc !
-        """
+            {monitor}
+            """
    
     elif args.video_source == 'lightweight':
         video_src = """
@@ -436,6 +437,14 @@ def get_args():
 
     return args
 
+def test_core(core_ip,timeout=1):
+    try:
+        socket.setdefaulttimeout(timeout)
+        socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((core_ip, 9999))
+        return True
+    except Exception as ex:
+        time.sleep(timeout)
+        return False
 
 def main():
     GObject.threads_init()
@@ -443,6 +452,9 @@ def main():
 
     args = get_args()
     core_ip = socket.gethostbyname(args.host)
+    while not test_core(core_ip):
+        print("Waiting for Core " + core_ip)
+
 
     server_caps, args = get_server_conf(core_ip, args.source_id, args)
 
