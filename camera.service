@@ -1,0 +1,13 @@
+[Unit]
+Description = camera pi
+After=network.target
+
+[Service]
+Type = simple
+ExecStart = /usr/share/voctomix-outcasts/ingest.py --video-source hdmi2usb --audio-source none --lightweight --host media-desktop --port 30000
+Restart = always
+RestartSec = 1s
+StartLimitInterval = 0
+
+[Install]
+WantedBy = multi-user.target
