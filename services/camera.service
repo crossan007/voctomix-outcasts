@@ -5,6 +5,11 @@ After=network.target
 [Service]
 Type = simple
 ExecStart = /usr/share/voctomix-outcasts/ingest.py --video-source hdmi2usb --audio-source none --lightweight --host media-desktop --port 30000
+ExecStartPost = v4l2-ctl --set-ctrl=exposure_auto=1
+ExecStartPost = v4l2-ctl --set-ctrl=focus_auto=0
+ExecStartPost = v4l2-ctl --set-ctrl=focus_absolute=0
+ExecStartPost = v4l2-ctl --set-ctrl=exposure_absolute=170
+ExecStartPost = v4l2-ctl --set-ctrl=sharpness=150
 Restart = always
 RestartSec = 1s
 StartLimitInterval = 0
